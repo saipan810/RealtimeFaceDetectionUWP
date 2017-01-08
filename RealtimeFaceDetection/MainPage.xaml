@@ -1,0 +1,43 @@
+﻿<Page
+    x:Class="RealtimeFaceDetection.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:RealtimeFaceDetection"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+    <Page.Resources>
+        <Style x:Key="HeaderTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="Margin" Value="0,20,0,0" />
+        </Style>
+        <Style x:Key="ContentStyle" TargetType="FrameworkElement">
+            <Setter Property="Margin" Value="20,5,0,0" />
+        </Style>
+        <Style x:Key="ContentTextStyle" TargetType="TextBlock" BasedOn="{StaticResource ContentStyle}">
+            <Setter Property="FontSize" Value="20" />
+        </Style>
+    </Page.Resources>
+
+    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0" Width="150" Margin="10">
+            <TextBlock Text="Performance" Style="{StaticResource HeaderTextStyle}" />
+            <TextBlock Name="FpsTextBlock" Text="0fps" Style="{StaticResource ContentTextStyle}" />
+
+            <TextBlock Text="Draw" Style="{StaticResource HeaderTextStyle}" />
+            <ComboBox x:Name="DrawSelector" DisplayMemberPath="Name" ItemsSource="{Binding FaceDrawers}" SelectionChanged="DrawSelector_SelectionChanged" Style="{StaticResource ContentStyle}" />
+        </StackPanel>
+
+        <Grid Grid.Column="1">
+            <CaptureElement Name="Media" />
+            <Viewbox>
+                <Canvas Name="FaceDrawCanvas" />
+            </Viewbox>
+        </Grid>
+    </Grid>
+</Page>
