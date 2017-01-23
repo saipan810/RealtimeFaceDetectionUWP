@@ -8,11 +8,14 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
+using Windows.Devices.Enumeration;
+using Windows.Foundation;
 using Windows.Graphics.Imaging;
 using Windows.Media;
 using Windows.Media.Capture;
 using Windows.Media.MediaProperties;
 using Windows.UI.Core;
+using Windows.UI.Popups;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Navigation;
@@ -21,6 +24,9 @@ namespace RealtimeFaceDetection
 {
     public sealed partial class MainPage : Page
     {
+        private const Windows.Devices.Enumeration.Panel DeviceLocation = Windows.Devices.Enumeration.Panel.Front;
+        private readonly Size PreviewResolution = new Size(640, 480);
+
         private const string FacePredictorFileName = "shape_predictor_68_face_landmarks.dat";
 
         public readonly List<IFaceDrawer> FaceDrawers = new List<IFaceDrawer>()
@@ -127,9 +133,13 @@ namespace RealtimeFaceDetection
             {
                 _capture = new MediaCapture();
 
-                await _capture.InitializeAsync();
+                var device = await GetCameraDeviceInformationAsync(DeviceLocation);
 
-                Media.Source = _capture;
+                await _capture.InitializeAsync(new MediaCaptureInitializationSettings()
+                {
+                    VideoDeviceId = device?.Id,
+                    StreamingCaptureMode = StreamingCaptureMode.Video
+                });
 
                 await StartPreviewAsync(_capture);
 
@@ -140,6 +150,15 @@ namespace RealtimeFaceDetection
                 Debug.WriteLine("MediaCapture initialization failed.");
                 Debug.WriteLine(ex.Message);
             }
+        }
+
+        private async Task<DeviceInformation> GetCameraDeviceInformationAsync(Windows.Devices.Enumeration.Panel panel)
+        {
+            var allVideoDevices = await DeviceInformation.FindAllAsync(DeviceClass.VideoCapture);
+            var desiredDevices = allVideoDevices.FirstOrDefault(
+                x => x.IsEnabled && x.EnclosureLocation != null && x.EnclosureLocation.Panel == panel);
+
+            return desiredDevices;
         }
 
         private async Task FinalizeMediaCaptureAsync()
@@ -176,14 +195,26 @@ namespace RealtimeFaceDetection
                 return;
             }
 
-            if (capture != null)
+            if (capture == null)
             {
-                await capture.StartPreviewAsync();
+                return;
             }
+
+            var props = capture.VideoDeviceController.GetAvailableMediaStreamProperties(MediaStreamType.VideoPreview);
+            var filtered = props.OfType<VideoEncodingProperties>()
+                .Where(p => p.Width == PreviewResolution.Width && p.Height == PreviewResolution.Height);
+
+            await capture.VideoDeviceController.SetMediaStreamPropertiesAsync(MediaStreamType.VideoPreview, filtered.FirstOrDefault());
+            await capture.VideoDeviceController.SetMediaStreamPropertiesAsync(MediaStreamType.Photo, filtered.FirstOrDefault());
+            await capture.VideoDeviceController.SetMediaStreamPropertiesAsync(MediaStreamType.VideoRecord, filtered.FirstOrDefault());
+
+            Media.Source = _capture;
+            await capture.StartPreviewAsync();
 
             _isPreviewing = true;
 
             Debug.WriteLine("Preview started.");
+            Debug.WriteLineIf(!filtered.Any(), $"Camera do not support {PreviewResolution.Width} * {PreviewResolution.Height}.");
         }
 
         private async Task StopoPreviewAsync(MediaCapture capture)
